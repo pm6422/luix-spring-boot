@@ -45,4 +45,5 @@ jobs:
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         run: |
-          ./mvnw clean deploy -Prelease -Drevision="${{ steps.ver.outputs.version }}" -B
+          mvn --version
+          mvn clean deploy -Prelease -Drevision="${{ steps.ver.outputs.version }}" -B
