@@ -22,7 +22,8 @@ Lightweight, zero-bloat Java 25 and Spring Boot 4 toolkit shared across Luixtech
 
 | Feature | Classes | Config Prefix |
 |---|---|---|
-| **Logto / Passport OIDC** | `PassportOidcSupport`, `OidcUserClaims`, `PassportOidcAutoConfiguration` | `luix.oidc.*` |
+| **Logto / Passport OIDC** | `PassportOidcSupport`, `OidcUserClaims`, `PassportOidcAutoConfiguration`, `OidcAccount`, `OidcAccountStore`, `PassportOidcUserService`, `OidcUserSessionSyncFilter` | `luix.oidc.*` |
+| **Admin User Safety Guard** | `AdminUserGuard`, `AdminUserGuardException` | Static utilities |
 | **Startup Summary Banner** | `StartupBannerLogger`, `StartupBannerAutoConfiguration` | `luix.banner.*` |
 | **Bounded `RestClient` Timeouts** | `RestClientTimeoutAutoConfiguration` | `luix.http.*` |
 | **jOOQ Helpers** | `JooqTypeSupport`, `JooqSortSupport` | Static utilities |

@@ -1,6 +1,7 @@
 package com.luixtech.boot.oidc;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
@@ -10,6 +11,8 @@ import org.springframework.security.oauth2.client.web.DefaultOAuth2Authorization
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
@@ -144,5 +147,30 @@ public final class PassportOidcSupport {
             }
         }
         return "sub";
+    }
+
+    /**
+     * Extracts the OIDC {@code sub} identifier from an {@link Authentication}, supporting
+     * {@link OidcUser}, generic {@link OAuth2User}, and fallback to {@link Authentication#getName()}.
+     */
+    public static String resolveSubject(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof OidcUser oidcUser) {
+            String sub = oidcUser.getSubject();
+            if (sub != null && !sub.isBlank()) {
+                return sub;
+            }
+        }
+        if (principal instanceof OAuth2User oauth2User) {
+            String sub = oauth2User.getAttribute("sub");
+            if (sub != null && !sub.isBlank()) {
+                return sub;
+            }
+        }
+        String name = authentication.getName();
+        return (name != null && !name.isBlank()) ? name : null;
     }
 }
