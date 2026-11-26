@@ -17,13 +17,16 @@ Lightweight, zero-bloat Java 25 and Spring Boot 4 toolkit shared across Luixtech
 | `com.luixtech.core.id` | `TsidGenerator` | Thread-safe 64-bit numeric TSID generator (`2020-01-01Z` epoch, 42-bit ms + 10-bit node + 12-bit monotonic counter, bit-compatible with `tsid-creator`). |
 | `com.luixtech.core.crypto` | `AesGcmCrypto` | AES-256-GCM authenticated encryption (SHA-256 key derivation, 12B IV, 128-bit tag), supporting `STANDARD_BASE64`, `URL_SAFE_BASE64`, and `decryptOrRaw(...)`. |
 | `com.luixtech.core.ntfy` | `NtfyClient`, `NtfyMessage`, `NtfyAction` | Pure JDK `HttpClient` ntfy JSON API publisher with full UTF-8 / CJK / emoji support, Bearer auth, tags, icons, and view actions. |
+| `com.luixtech.core.time` | `TimeZoneCatalog`, `TimeZoneOption` | Canonical IANA time zone catalog with formatted UTC offsets, zone validation, and locale normalization. |
 
 ### 2. `com.luixtech:luix-spring-boot-starter` (Spring Boot 4 Auto-Configuration)
 
 | Feature | Classes | Config Prefix |
 |---|---|---|
-| **Logto / Passport OIDC** | `PassportOidcSupport`, `OidcUserClaims`, `PassportOidcAutoConfiguration`, `OidcAccount`, `OidcAccountStore`, `PassportOidcUserService`, `OidcUserSessionSyncFilter` | `luix.oidc.*` |
+| **Logto / Passport OIDC** | `PassportOidcSupport`, `OidcUserClaims`, `PassportOidcAutoConfiguration`, `OidcAccount`, `OidcAccountStore`, `PassportOidcUserService`, `OidcUserSessionSyncFilter`, `CurrentOidcAccountResolver` | `luix.oidc.*` |
 | **Admin User Safety Guard** | `AdminUserGuard`, `AdminUserGuardException` | Static utilities |
+| **REST Error Handling** | `ApiError`, `LuixRestExceptionHandler` | Base `@RestControllerAdvice` |
+| **Transaction Hook** | `TransactionAfterCommit` | Static utility |
 | **Startup Summary Banner** | `StartupBannerLogger`, `StartupBannerAutoConfiguration` | `luix.banner.*` |
 | **Bounded `RestClient` Timeouts** | `RestClientTimeoutAutoConfiguration` | `luix.http.*` |
 | **jOOQ Helpers** | `JooqTypeSupport`, `JooqSortSupport` | Static utilities |

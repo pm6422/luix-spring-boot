@@ -1,6 +1,9 @@
 package com.luixtech.boot.oidc;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
@@ -9,6 +12,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -17,8 +21,12 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
 import org.springframework.security.oauth2.jwt.JwtTypeValidator;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +37,8 @@ import java.util.Objects;
 public final class PassportOidcSupport {
 
     public static final String DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization";
+
+    private static final Logger log = LoggerFactory.getLogger(PassportOidcSupport.class);
 
     private PassportOidcSupport() {
     }
@@ -172,5 +182,102 @@ public final class PassportOidcSupport {
         }
         String name = authentication.getName();
         return (name != null && !name.isBlank()) ? name : null;
+    }
+
+    /**
+     * Creates an {@link AuthenticationFailureHandler} that extracts the OAuth2 error code
+     * (falling back to {@code defaultErrorCode}) and redirects to {@code <redirectBaseUrl>/?error=<code>}.
+     *
+     * @param redirectBaseUrl  optional base URL (e.g. {@code "https://app.example.com"} or {@code ""})
+     * @param defaultErrorCode fallback error code when no OAuth2 error code is present
+     */
+    public static AuthenticationFailureHandler oidcFailureHandler(String redirectBaseUrl, String defaultErrorCode) {
+        String base = normalizeBasePrefix(redirectBaseUrl);
+        String fallback = (defaultErrorCode != null && !defaultErrorCode.isBlank())
+                ? defaultErrorCode.trim()
+                : "authentication_failed";
+        return (request, response, exception) -> {
+            String error = fallback;
+            if (exception instanceof OAuth2AuthenticationException oauth2Ex
+                    && oauth2Ex.getError() != null
+                    && oauth2Ex.getError().getErrorCode() != null
+                    && !oauth2Ex.getError().getErrorCode().isBlank()) {
+                error = oauth2Ex.getError().getErrorCode();
+            }
+            log.error("OIDC authentication failed: {}", exception.getMessage());
+            response.sendRedirect(base + "/?error=" + error);
+        };
+    }
+
+    /**
+     * Creates an {@link AuthenticationEntryPoint} returning HTTP 401 JSON for requests matching any
+     * {@code apiPrefixes} (e.g. {@code "/api"}, {@code "/open-api"}), HTMX {@code HX-Redirect} for HTMX
+     * requests, and a standard HTTP redirect to {@code redirectUrl} for browser requests.
+     */
+    public static AuthenticationEntryPoint jsonOrRedirectAuthenticationEntryPoint(
+            String redirectUrl, String... apiPrefixes) {
+        Objects.requireNonNull(redirectUrl, "redirectUrl must not be null");
+        return (request, response, authException) -> {
+            if (response.isCommitted()) {
+                return;
+            }
+            if (matchesAnyPrefix(request.getRequestURI(), apiPrefixes)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"Unauthorized\"}");
+            } else if ("true".equalsIgnoreCase(request.getHeader("HX-Request"))) {
+                response.setHeader("HX-Redirect", redirectUrl);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            } else {
+                response.sendRedirect(redirectUrl);
+            }
+        };
+    }
+
+    /**
+     * Creates an {@link AccessDeniedHandler} returning HTTP 403 JSON for requests matching any
+     * {@code apiPrefixes}, and redirecting browser requests to {@code redirectUrl}.
+     */
+    public static AccessDeniedHandler jsonOrRedirectAccessDeniedHandler(
+            String redirectUrl, String... apiPrefixes) {
+        Objects.requireNonNull(redirectUrl, "redirectUrl must not be null");
+        return (request, response, accessDeniedException) -> {
+            if (response.isCommitted()) {
+                return;
+            }
+            log.warn("Access denied for request [{}]", request.getRequestURI());
+            if (matchesAnyPrefix(request.getRequestURI(), apiPrefixes)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"ACCESS_DENIED\",\"message\":\"Access denied\"}");
+            } else {
+                response.sendRedirect(redirectUrl);
+            }
+        };
+    }
+
+    private static boolean matchesAnyPrefix(String uri, String... prefixes) {
+        if (uri == null || prefixes == null) {
+            return false;
+        }
+        for (String prefix : prefixes) {
+            if (prefix != null && !prefix.isEmpty() && uri.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeBasePrefix(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "";
+        }
+        String trimmed = baseUrl.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 }
