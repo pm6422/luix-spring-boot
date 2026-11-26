@@ -37,7 +37,7 @@ Lightweight, zero-bloat Java 25 and Spring Boot 4 toolkit shared across Luixtech
 <dependency>
     <groupId>com.luixtech</groupId>
     <artifactId>luix-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -47,7 +47,7 @@ Or depend only on pure Java utilities without Spring:
 <dependency>
     <groupId>com.luixtech</groupId>
     <artifactId>luix-core</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
