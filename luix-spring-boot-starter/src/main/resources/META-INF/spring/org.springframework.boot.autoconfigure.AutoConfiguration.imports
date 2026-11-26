@@ -1,0 +1,3 @@
+com.luixtech.boot.banner.StartupBannerAutoConfiguration
+com.luixtech.boot.http.RestClientTimeoutAutoConfiguration
+com.luixtech.boot.oidc.PassportOidcAutoConfiguration
