@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="luix-account-00001-app-user" author="luix-spring-boot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="app_user"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="app_user" remarks="Unified OIDC application users">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="oidc_sub" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_app_user_oidc_sub"/>
+            </column>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="display_name" type="VARCHAR(128)"/>
+            <column name="picture_url" type="TEXT"/>
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_zone_id" type="VARCHAR(64)"/>
+            <column name="time_format_id" type="VARCHAR(16)" defaultValue="24H"/>
+            <column name="last_login_at" type="TIMESTAMPTZ"/>
+            <column name="created_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="app_user" indexName="idx_app_user_email">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="luix-account-00002-app-user-role" author="luix-spring-boot">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="app_user_role"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="app_user_role" remarks="User role assignments">
+            <column name="user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="app_user_role" columnNames="user_id, role" constraintName="pk_app_user_role"/>
+
+        <addForeignKeyConstraint
+                baseTableName="app_user_role"
+                baseColumnNames="user_id"
+                constraintName="fk_app_user_role_user"
+                referencedTableName="app_user"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+
+        <createIndex tableName="app_user_role" indexName="idx_app_user_role_role">
+            <column name="role"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
