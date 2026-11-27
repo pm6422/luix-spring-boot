@@ -43,7 +43,7 @@ public class PassportOidcUserService<U extends OidcAccount> extends OidcUserServ
      * Creates a service executing account synchronization directly on the calling thread.
      */
     public PassportOidcUserService(OidcAccountStore<U> accountStore) {
-        this(accountStore, Supplier::get);
+        this(accountStore, action -> action.get());
     }
 
     /**

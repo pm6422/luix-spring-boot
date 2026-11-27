@@ -140,10 +140,14 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
     }
 
     public ZoneId resolveEffectiveZone(HttpServletRequest request, Authentication authentication) {
-        return resolveCurrentUser(request, authentication)
-                .map(LuixAppUser::getTimeZoneId)
-                .flatMap(TimeZoneCatalog::parseValidZoneId)
-                .orElseGet(ZoneId::systemDefault);
+        Optional<LuixAppUser> userOpt = resolveCurrentUser(request, authentication);
+        if (userOpt.isPresent()) {
+            Optional<ZoneId> zone = TimeZoneCatalog.parseValidZoneId(userOpt.get().getTimeZoneId());
+            if (zone.isPresent()) {
+                return zone.get();
+            }
+        }
+        return ZoneId.systemDefault();
     }
 
     @Transactional
@@ -254,9 +258,11 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
             return null;
         }
         String trimmed = timezone.trim();
-        return TimeZoneCatalog.parseValidZoneId(trimmed)
-                .map(ZoneId::getId)
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported timezone: " + trimmed));
+        Optional<ZoneId> zone = TimeZoneCatalog.parseValidZoneId(trimmed);
+        if (zone.isEmpty()) {
+            throw new IllegalArgumentException("Unsupported timezone: " + trimmed);
+        }
+        return zone.get().getId();
     }
 
     private Set<String> validateAndNormalizeRoles(Collection<String> requestedRoles) {

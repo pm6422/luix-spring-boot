@@ -20,7 +20,10 @@ import java.util.List;
  * <p>Enable via {@code luix.account.enabled=true} and include {@code classpath:luix/account/changelog.xml}
  * in your Liquibase master changelog (or migrate existing tables to {@code app_user} and {@code app_user_role}).
  */
-@AutoConfiguration
+@AutoConfiguration(afterName = {
+        "org.springframework.boot.jdbc.autoconfigure.JdbcClientAutoConfiguration",
+        "org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration"
+})
 @EnableConfigurationProperties(LuixAccountProperties.class)
 @ConditionalOnClass({JdbcClient.class, PassportOidcUserService.class})
 @ConditionalOnProperty(prefix = "luix.account", name = "enabled", havingValue = "true")
