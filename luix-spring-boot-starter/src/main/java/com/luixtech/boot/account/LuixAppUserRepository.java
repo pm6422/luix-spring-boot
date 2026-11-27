@@ -74,14 +74,38 @@ public class LuixAppUserRepository {
         return userOpt;
     }
 
+    public List<LuixAppUser> findAllByRole(String role) {
+        if (role == null || role.isBlank()) {
+            return List.of();
+        }
+        List<LuixAppUser> users = jdbcClient.sql(
+                        """
+                        SELECT DISTINCT u.id, u.oidc_sub, u.email, u.display_name, u.picture_url, u.enabled,
+                               u.time_zone_id, u.time_format_id, u.last_login_at, u.created_at, u.updated_at
+                        FROM app_user u
+                        JOIN app_user_role r ON u.id = r.user_id
+                        WHERE r.role = :role
+                        ORDER BY u.created_at ASC, u.id ASC
+                        """)
+                .param("role", role.trim())
+                .query(this::mapUser)
+                .list();
+        attachRolesForList(users);
+        return users;
+    }
+
     public List<LuixAppUser> findAllOrderByCreatedAtAsc() {
         List<LuixAppUser> users = jdbcClient.sql(SELECT_COLUMNS + " ORDER BY created_at ASC, id ASC")
                 .query(this::mapUser)
                 .list();
-        if (users.isEmpty()) {
-            return users;
-        }
+        attachRolesForList(users);
+        return users;
+    }
 
+    private void attachRolesForList(List<LuixAppUser> users) {
+        if (users.isEmpty()) {
+            return;
+        }
         Map<String, Set<String>> rolesByUserId = new LinkedHashMap<>();
         jdbcClient.sql("SELECT user_id, role FROM app_user_role ORDER BY role ASC")
                 .query((rs, rowNum) -> {
@@ -95,7 +119,6 @@ public class LuixAppUserRepository {
         for (LuixAppUser user : users) {
             user.setRoles(rolesByUserId.getOrDefault(user.getId(), Set.of()));
         }
-        return users;
     }
 
     public long count() {

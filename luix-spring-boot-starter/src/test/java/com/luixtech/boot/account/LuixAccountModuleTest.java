@@ -99,7 +99,7 @@ class LuixAccountModuleTest {
 
     @Test
     void updatesPreferencesAndNormalizesTimezoneAndTimeFormat() {
-        LuixAppUser user = service.save(service.createNewAccount(
+        service.save(service.createNewAccount(
                 new OidcUserClaims("sub-1", "u1@example.com", "User One", null),
                 true,
                 Instant.now()));

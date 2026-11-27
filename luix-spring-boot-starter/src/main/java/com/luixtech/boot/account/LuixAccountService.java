@@ -177,6 +177,10 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
         return repository.findAllOrderByCreatedAtAsc();
     }
 
+    public List<LuixAppUser> listUsersByRole(String role) {
+        return repository.findAllByRole(role);
+    }
+
     public Optional<LuixAppUser> findByIdOrEmail(String identifier) {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
