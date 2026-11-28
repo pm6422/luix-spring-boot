@@ -68,7 +68,7 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
         user.setEmail(claims.email());
         user.setDisplayName(claims.displayName());
         user.setPictureUrl(claims.picture());
-        user.setEnabled(true);
+        user.setEnabled(firstUser || properties.isAutoEnableNewUsers());
         user.setTimeFormatId(DEFAULT_TIME_FORMAT);
         user.setLastLoginAt(loginAt);
 

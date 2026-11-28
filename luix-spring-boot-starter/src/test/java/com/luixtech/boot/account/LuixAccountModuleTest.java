@@ -86,7 +86,9 @@ class LuixAccountModuleTest {
                 now));
 
         assertThat(admin.getId()).isNotBlank();
+        assertThat(admin.isEnabled()).isTrue();
         assertThat(admin.getAuthorities()).containsExactly("ROLE_ADMIN");
+        assertThat(viewer.isEnabled()).isFalse();
         assertThat(viewer.getAuthorities()).containsExactly("ROLE_VIEWER");
         assertThat(repository.count()).isEqualTo(2L);
         assertThat(repository.countEnabledByRole("ROLE_ADMIN")).isEqualTo(1L);
@@ -95,6 +97,18 @@ class LuixAccountModuleTest {
         assertThat(all).hasSize(2);
         assertThat(all.get(0).getEmail()).isEqualTo("admin@example.com");
         assertThat(all.get(1).getAuthorities()).containsExactly("ROLE_VIEWER");
+    }
+
+    @Test
+    void autoEnableNewUsersEnablesNonAdminUsersWhenConfigured() {
+        properties.setAutoEnableNewUsers(true);
+        LuixAppUser user = service.save(service.createNewAccount(
+                new OidcUserClaims("sub-u2", "u2@example.com", "User Two", null),
+                false,
+                Instant.now()));
+
+        assertThat(user.isEnabled()).isTrue();
+        assertThat(user.getAuthorities()).containsExactly("ROLE_VIEWER");
     }
 
     @Test
@@ -208,7 +222,14 @@ class LuixAccountModuleTest {
                 adminAuth))
                 .isInstanceOf(AdminUserGuardException.class);
 
-        // Batch disable u1 & u2
+        // Batch enable then disable u1 & u2
+        LuixUserManagementController.BatchOperationResult enabled = controller.batchUpdateStatus(
+                new LuixUserManagementController.BatchStatusRequest(List.of(u1.getId(), u2.getId()), true),
+                adminAuth);
+        assertThat(enabled.affectedCount()).isEqualTo(2);
+        assertThat(repository.findById(u1.getId()).orElseThrow().isEnabled()).isTrue();
+        assertThat(repository.findById(u2.getId()).orElseThrow().isEnabled()).isTrue();
+
         LuixUserManagementController.BatchOperationResult disabled = controller.batchUpdateStatus(
                 new LuixUserManagementController.BatchStatusRequest(List.of(u1.getId(), u2.getId()), false),
                 adminAuth);

@@ -33,6 +33,13 @@ public class LuixAccountProperties {
     private List<String> availableRoles = new ArrayList<>(List.of("ROLE_ADMIN", "ROLE_USER"));
 
     /**
+     * When {@code true}, newly provisioned non-admin users are enabled immediately on first sign-in.
+     * When {@code false}, only the first bootstrap administrator is enabled automatically while subsequent
+     * new users start disabled until an administrator approves and enables them.
+     */
+    private boolean autoEnableNewUsers = false;
+
+    /**
      * When {@code true}, each user is restricted to a single role (assigning a role replaces existing roles).
      */
     private boolean singleRole = false;
@@ -77,6 +84,14 @@ public class LuixAccountProperties {
 
     public void setAvailableRoles(List<String> availableRoles) {
         this.availableRoles = availableRoles != null ? new ArrayList<>(availableRoles) : new ArrayList<>();
+    }
+
+    public boolean isAutoEnableNewUsers() {
+        return autoEnableNewUsers;
+    }
+
+    public void setAutoEnableNewUsers(boolean autoEnableNewUsers) {
+        this.autoEnableNewUsers = autoEnableNewUsers;
     }
 
     public boolean isSingleRole() {
