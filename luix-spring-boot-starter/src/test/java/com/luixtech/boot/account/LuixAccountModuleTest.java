@@ -177,6 +177,54 @@ class LuixAccountModuleTest {
     }
 
     @Test
+    void userManagementSupportsAvailableRolesAndBatchOperations() {
+        LuixAppUser admin = service.save(service.createNewAccount(
+                new OidcUserClaims("sub-admin", "admin@example.com", "Admin", null),
+                true,
+                Instant.now()));
+        LuixAppUser u1 = service.save(service.createNewAccount(
+                new OidcUserClaims("sub-u1", "u1@example.com", "User One", null),
+                false,
+                Instant.now()));
+        LuixAppUser u2 = service.save(service.createNewAccount(
+                new OidcUserClaims("sub-u2", "u2@example.com", "User Two", null),
+                false,
+                Instant.now()));
+
+        LuixUserManagementController controller = new LuixUserManagementController(service);
+        LuixUserManagementController.AvailableRolesResponse available = controller.availableRoles();
+        assertThat(available.singleRole()).isFalse();
+        assertThat(available.roles()).containsExactly(
+                new LuixUserManagementController.RoleOption("ROLE_ADMIN", "ADMIN", "Admin"),
+                new LuixUserManagementController.RoleOption("ROLE_USER", "USER", "User"),
+                new LuixUserManagementController.RoleOption("ROLE_VIEWER", "VIEWER", "Viewer")
+        );
+
+        Authentication adminAuth = oidcAuth("sub-admin", "admin@example.com");
+
+        // Self-disable in batch must be rejected
+        assertThatThrownBy(() -> controller.batchUpdateStatus(
+                new LuixUserManagementController.BatchStatusRequest(List.of(admin.getId(), u1.getId()), false),
+                adminAuth))
+                .isInstanceOf(AdminUserGuardException.class);
+
+        // Batch disable u1 & u2
+        LuixUserManagementController.BatchOperationResult disabled = controller.batchUpdateStatus(
+                new LuixUserManagementController.BatchStatusRequest(List.of(u1.getId(), u2.getId()), false),
+                adminAuth);
+        assertThat(disabled.affectedCount()).isEqualTo(2);
+        assertThat(repository.findById(u1.getId()).orElseThrow().isEnabled()).isFalse();
+        assertThat(repository.findById(u2.getId()).orElseThrow().isEnabled()).isFalse();
+
+        // Batch delete u1 & u2
+        LuixUserManagementController.BatchOperationResult deleted = controller.batchDelete(
+                new LuixUserManagementController.BatchDeleteRequest(List.of(u1.getId(), u2.getId())),
+                adminAuth);
+        assertThat(deleted.affectedCount()).isEqualTo(2);
+        assertThat(repository.count()).isEqualTo(1L);
+    }
+
+    @Test
     void autoConfigurationActivatesOnlyWhenExplicitlyEnabled() {
         ApplicationContextRunner runner = new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(LuixAccountAutoConfiguration.class))

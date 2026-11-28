@@ -6,6 +6,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +51,14 @@ public class LuixUserManagementController {
                 .toList();
     }
 
+    @GetMapping("/available-roles")
+    public AvailableRolesResponse availableRoles() {
+        List<RoleOption> roles = accountService.getAvailableRoles().stream()
+                .map(RoleOption::fromAuthority)
+                .toList();
+        return new AvailableRolesResponse(roles, accountService.isSingleRole());
+    }
+
     @GetMapping("/{identifier}")
     public ResponseEntity<UserSummary> getByIdOrEmail(@PathVariable String identifier) {
         return accountService.findByIdOrEmail(identifier)
@@ -65,6 +74,26 @@ public class LuixUserManagementController {
         }
         String identifier = StringUtils.hasText(request.id()) ? request.id() : request.email();
         return updateByIdOrEmail(identifier, request, authentication);
+    }
+
+    @PutMapping("/batch/status")
+    public BatchOperationResult batchUpdateStatus(@RequestBody BatchStatusRequest request,
+                                                  Authentication authentication) {
+        if (request == null || request.enabled() == null) {
+            throw new IllegalArgumentException("Request body with ids and enabled is required");
+        }
+        int affected = accountService.batchUpdateEnabled(authentication, request.ids(), request.enabled());
+        return new BatchOperationResult(affected);
+    }
+
+    @PostMapping("/batch/delete")
+    public BatchOperationResult batchDelete(@RequestBody BatchDeleteRequest request,
+                                            Authentication authentication) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request body with ids is required");
+        }
+        int affected = accountService.batchDeleteUsers(authentication, request.ids());
+        return new BatchOperationResult(affected);
     }
 
     @PutMapping("/{identifier}")
@@ -139,6 +168,57 @@ public class LuixUserManagementController {
         }
         String upper = raw.trim().toUpperCase(Locale.ROOT);
         return upper.startsWith("ROLE_") ? upper : "ROLE_" + upper;
+    }
+
+    private static String formatRoleLabel(String shortName) {
+        String[] parts = shortName.toLowerCase(Locale.ROOT).split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (!sb.isEmpty()) {
+                sb.append(' ');
+            }
+            sb.append(Character.toUpperCase(part.charAt(0))).append(part.substring(1));
+        }
+        return sb.toString();
+    }
+
+    public record AvailableRolesResponse(
+            List<RoleOption> roles,
+            boolean singleRole
+    ) {
+    }
+
+    public record RoleOption(
+            String id,
+            String name,
+            String label
+    ) {
+        public static RoleOption fromAuthority(String authority) {
+            String normalized = normalizeRoleToken(authority);
+            String shortName = normalized != null && normalized.startsWith("ROLE_")
+                    ? normalized.substring("ROLE_".length())
+                    : String.valueOf(authority);
+            return new RoleOption(normalized != null ? normalized : authority, shortName, formatRoleLabel(shortName));
+        }
+    }
+
+    public record BatchStatusRequest(
+            List<String> ids,
+            Boolean enabled
+    ) {
+    }
+
+    public record BatchDeleteRequest(
+            List<String> ids
+    ) {
+    }
+
+    public record BatchOperationResult(
+            int affectedCount
+    ) {
     }
 
     public record UpdateUserRequest(

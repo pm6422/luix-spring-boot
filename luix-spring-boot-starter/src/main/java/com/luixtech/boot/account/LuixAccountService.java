@@ -181,6 +181,14 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
         return repository.findAllByRole(role);
     }
 
+    public List<String> getAvailableRoles() {
+        return List.copyOf(properties.getAvailableRoles());
+    }
+
+    public boolean isSingleRole() {
+        return properties.isSingleRole();
+    }
+
     public Optional<LuixAppUser> findByIdOrEmail(String identifier) {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
@@ -243,6 +251,68 @@ public class LuixAccountService implements OidcAccountStore<LuixAppUser> {
                 adminRole,
                 () -> repository.countEnabledByRole(adminRole));
         repository.deleteById(target.getId());
+    }
+
+    @Transactional
+    public int batchUpdateEnabled(Authentication actor, Collection<String> identifiers, boolean enabled) {
+        Set<String> uniqueIds = normalizeBatchIdentifiers(identifiers);
+        String actingSubject = PassportOidcSupport.resolveSubject(actor);
+        String adminRole = properties.getAdminRole();
+        int updated = 0;
+
+        for (String identifier : uniqueIds) {
+            LuixAppUser target = findByIdOrEmail(identifier)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + identifier));
+            AdminUserGuard.assertCanSetEnabled(
+                    target,
+                    enabled,
+                    actingSubject,
+                    adminRole,
+                    () -> repository.countEnabledByRole(adminRole));
+            if (target.isEnabled() != enabled) {
+                target.setEnabled(enabled);
+                repository.save(target);
+            }
+            updated++;
+        }
+        return updated;
+    }
+
+    @Transactional
+    public int batchDeleteUsers(Authentication actor, Collection<String> identifiers) {
+        Set<String> uniqueIds = normalizeBatchIdentifiers(identifiers);
+        String actingSubject = PassportOidcSupport.resolveSubject(actor);
+        String adminRole = properties.getAdminRole();
+        int deleted = 0;
+
+        for (String identifier : uniqueIds) {
+            LuixAppUser target = findByIdOrEmail(identifier)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + identifier));
+            AdminUserGuard.assertCanDelete(
+                    target,
+                    actingSubject,
+                    adminRole,
+                    () -> repository.countEnabledByRole(adminRole));
+            repository.deleteById(target.getId());
+            deleted++;
+        }
+        return deleted;
+    }
+
+    private static Set<String> normalizeBatchIdentifiers(Collection<String> identifiers) {
+        if (identifiers == null || identifiers.isEmpty()) {
+            throw new IllegalArgumentException("At least one user identifier is required");
+        }
+        Set<String> unique = new LinkedHashSet<>();
+        for (String raw : identifiers) {
+            if (raw != null && !raw.isBlank()) {
+                unique.add(raw.trim());
+            }
+        }
+        if (unique.isEmpty()) {
+            throw new IllegalArgumentException("At least one user identifier is required");
+        }
+        return unique;
     }
 
     // =========================================================================
