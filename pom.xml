@@ -216,7 +216,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>sonatype-central</publishingServerId>
-                    <autoPublish>false</autoPublish>
+                    <autoPublish>true</autoPublish>
                     <waitUntil>validated</waitUntil>
                 </configuration>
             </plugin>
