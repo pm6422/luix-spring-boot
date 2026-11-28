@@ -1,4 +1,7 @@
 com.luixtech.boot.account.LuixAccountAutoConfiguration
 com.luixtech.boot.banner.StartupBannerAutoConfiguration
+com.luixtech.boot.crypto.LuixCryptoAutoConfiguration
 com.luixtech.boot.http.RestClientTimeoutAutoConfiguration
 com.luixtech.boot.oidc.PassportOidcAutoConfiguration
+com.luixtech.boot.web.LuixWebAutoConfiguration
+com.luixtech.boot.web.spa.LuixSpaAutoConfiguration
